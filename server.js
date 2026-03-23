@@ -23,7 +23,7 @@ app.get("/api/products", (req, res) => {
   const products = files.map((file, index) => ({
     id: index + 1,
     name: `Resin Art ${index + 1}`,
-    img: `/images/${file}`, // ✅ no BASE_URL needed
+    img: `${req.protocol}://${req.get("host")}/images/${file}`, // ✅ no BASE_URL needed
   }));
 
   res.json(products);
