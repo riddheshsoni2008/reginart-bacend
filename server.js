@@ -69,7 +69,7 @@ app.get("/api/products", (req, res) => {
     return {
       id: index + 1,
       name: productNames[index] || cleanName || `Resin Art ${index + 1}`,
-      img: `${req.protocol}://${req.get("host")}/images/${file}`,
+      img: `https://${req.get("host")}/images/${file}`,
     };
   });
 
