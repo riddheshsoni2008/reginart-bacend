@@ -2,32 +2,21 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
 app.use(cors());
 
+// ✅ Serve React Build
+app.use(express.static(path.join(__dirname, "dist")));
+
 // ✅ Serve Images Folder
 app.use("/images", express.static(path.join(__dirname, "reginimgs")));
 
-// 🔥 CUSTOM PRODUCT NAMES (EDIT HERE)
-const productNames = [
-  "Golden Memory Frame ",
-  "Couple Resin Keepsake ",
-  "Floral Resin Plate ",
-  "Luxury Resin Wall Art ",
-  "Personalized Photo Frame ",
-  "Handcrafted Resin Tray ",
-  "Elegant Resin Clock ",
-  "Custom Name Plate ",
-  "Wedding Memory Frame ",
-  "Premium Resin Decor ",
-  "Artistic Resin Frame ",
-  "Modern Resin Design ",
-  "Classic Resin Gift ",
-  "Designer Resin Piece ",
-];
+// 🔥 CUSTOM PRODUCT NAMES
+const productNames = ["Varmala preservation in Teakwood frame"];
 
-// ✅ API - Products
+// ✅ API - Products (FINAL FIXED)
 app.get("/api/products", (req, res) => {
   const dirPath = path.join(__dirname, "reginimgs");
 
@@ -37,16 +26,45 @@ app.get("/api/products", (req, res) => {
 
   const files = fs.readdirSync(dirPath);
 
-  const products = files.map((file, index) => {
-    // 🔥 Name priority:
-    // 1. Custom array
-    // 2. Filename auto
-    // 3. Default fallback
+  const seenHashes = new Set();
+  const uniqueFiles = [];
 
+  files.forEach((file) => {
+    const filePath = path.join(dirPath, file);
+
+    // ❌ skip non-files
+    if (!fs.lstatSync(filePath).isFile()) return;
+
+    // ❌ DELETE files like (1), (2), (3)
+    if (file.match(/\(\d+\)/)) {
+      fs.unlinkSync(filePath);
+      console.log(`🗑️ Deleted (number duplicate): ${file}`);
+      return;
+    }
+
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+
+      const hash = crypto.createHash("md5").update(fileBuffer).digest("hex");
+
+      if (!seenHashes.has(hash)) {
+        seenHashes.add(hash);
+        uniqueFiles.push(file);
+      } else {
+        // ❌ delete same image duplicate
+        fs.unlinkSync(filePath);
+        console.log(`🗑️ Deleted (same image): ${file}`);
+      }
+    } catch (err) {
+      console.log("Error:", file, err);
+    }
+  });
+
+  const products = uniqueFiles.map((file, index) => {
     const cleanName = file
-      .replace(/\.[^/.]+$/, "") // remove extension
-      .replace(/[-_]/g, " ") // replace - _
-      .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
     return {
       id: index + 1,
@@ -58,14 +76,13 @@ app.get("/api/products", (req, res) => {
   res.json(products);
 });
 
-// ✅ Root Route
-app.get("/", (req, res) => {
-  res.send("API is running 🚀");
+// ✅ React fallback
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 
-// ✅ Start Server
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
